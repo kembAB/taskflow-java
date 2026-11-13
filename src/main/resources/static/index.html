@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow - Team Task Manager</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #f2f4f8; color: #1d2733; }
+  header { background: #14532d; color: #fff; padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 24px; }
+  header p { margin: 4px 0 0; opacity: .85; font-size: 14px; }
+  main { max-width: 860px; margin: 24px auto; padding: 0 16px 40px; }
+  .card { background: #fff; border-radius: 10px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 18px; }
+  form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+  form textarea { grid-column: 1 / -1; }
+  input, select, textarea { padding: 9px; border: 1px solid #c6cdd6; border-radius: 6px; font-size: 14px; width: 100%; }
+  button { background: #14532d; color: #fff; border: 0; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  button.secondary { background: #e5e9ef; color: #1d2733; }
+  button.danger { background: #b3261e; }
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; }
+  .stat { background: #eef4ee; border-radius: 8px; padding: 10px 16px; font-size: 14px; }
+  .stat b { font-size: 20px; display: block; }
+  .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filters button.active { background: #0c3a1f; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid #e5e9ef; vertical-align: top; }
+  .badge { padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .TODO { background: #fde68a; }
+  .IN_PROGRESS { background: #bfdbfe; }
+  .DONE { background: #bbf7d0; }
+  .HIGH { color: #b3261e; font-weight: 700; }
+  .MEDIUM { color: #b45309; font-weight: 600; }
+  .LOW { color: #4b5563; }
+  .done-title { text-decoration: line-through; color: #6b7280; }
+  .actions { white-space: nowrap; }
+  .empty { color: #6b7280; padding: 14px 4px; }
+  @media (max-width: 640px) { form { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>TaskFlow</h1>
+  <p>Team Task Manager - by Abel Haile Magicho</p>
+</header>
+<main>
+  <div class="card">
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Add a task</h3>
+    <form id="taskForm">
+      <input id="title" placeholder="Title" required maxlength="120">
+      <select id="priority">
+        <option value="LOW">Low priority</option>
+        <option value="MEDIUM" selected>Medium priority</option>
+        <option value="HIGH">High priority</option>
+      </select>
+      <input id="dueDate" type="date">
+      <textarea id="description" rows="2" placeholder="Description (optional)"></textarea>
+      <button type="submit">Add task</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="filters">
+      <button data-filter="" class="active">All</button>
+      <button data-filter="TODO">To do</button>
+      <button data-filter="IN_PROGRESS">In progress</button>
+      <button data-filter="DONE">Done</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Task</th><th>Status</th><th>Priority</th><th>Due</th><th></th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>No tasks yet. Add the first one above.</div>
+  </div>
+</main>
+
+<script>
+const api = "/api/tasks";
+let filter = "";
+
+async function loadStats() {
+  const s = await (await fetch(api + "/stats")).json();
+  document.getElementById("stats").innerHTML =
+    `<div class="stat"><b>${s.total}</b>Total</div>` +
+    `<div class="stat"><b>${s.todo}</b>To do</div>` +
+    `<div class="stat"><b>${s.inProgress}</b>In progress</div>` +
+    `<div class="stat"><b>${s.done}</b>Done</div>`;
+}
+
+async function loadTasks() {
+  const url = filter ? api + "?status=" + filter : api;
+  const tasks = await (await fetch(url)).json();
+  const rows = document.getElementById("rows");
+  document.getElementById("empty").hidden = tasks.length > 0;
+  rows.innerHTML = tasks.map(t => `
+    <tr>
+      <td>
+        <span class="${t.status === "DONE" ? "done-title" : ""}"><b>${escapeHtml(t.title)}</b></span>
+        <br><small>${escapeHtml(t.description || "")}</small>
+      </td>
+      <td><span class="badge ${t.status}">${t.status.replace("_", " ")}</span></td>
+      <td class="${t.priority}">${t.priority}</td>
+      <td>${t.dueDate || "-"}</td>
+      <td class="actions">
+        ${t.status !== "DONE" ? `<button class="secondary" onclick="completeTask(${t.id})">Complete</button>` : ""}
+        <button class="danger" onclick="deleteTask(${t.id})">Delete</button>
+      </td>
+    </tr>`).join("");
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function refresh() {
+  await loadStats();
+  await loadTasks();
+}
+
+document.getElementById("taskForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = {
+    title: document.getElementById("title").value.trim(),
+    description: document.getElementById("description").value.trim(),
+    priority: document.getElementById("priority").value,
+    dueDate: document.getElementById("dueDate").value || null,
+    status: "TODO"
+  };
+  await fetch(api, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  e.target.reset();
+  document.getElementById("priority").value = "MEDIUM";
+  refresh();
+});
+
+async function completeTask(id) {
+  await fetch(api + "/" + id + "/complete", { method: "PATCH" });
+  refresh();
+}
+
+async function deleteTask(id) {
+  await fetch(api + "/" + id, { method: "DELETE" });
+  refresh();
+}
+
+document.querySelectorAll(".filters button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filters button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    filter = btn.dataset.filter;
+    loadTasks();
+  });
+});
+
+refresh();
+</script>
+</body>
+</html>
