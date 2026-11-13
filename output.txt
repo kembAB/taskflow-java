@@ -1,0 +1,45 @@
+==================================================================
+TaskFlow - real build and run output
+Captured on this machine from the actual jar, H2 local profile.
+==================================================================
+
+--- Maven package result ---
+-rw-rw---- 1 root nogroup 50268386 Nov 13 00:16 target/taskflow-1.0.0.jar
+Tests (from target/surefire-reports):
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 9.676 s -- in com.abel.taskflow.TaskflowApplicationTests
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.798 s -- in com.abel.taskflow.controller.TaskControllerTest
+
+--- Application startup log, key lines ---
+2026-11-13T00:16:32.991Z  INFO 18310 --- [taskflow] [           main] com.abel.taskflow.TaskflowApplication    : Starting TaskflowApplication v1.0.0 using Java 17.0.21 with PID 18310 (/home/hatch/workspace/taskflow-java/target/taskflow-1.0.0.jar started by root in /home/hatch/workspace/taskflow-java)
+2026-11-13T00:16:38.473Z  INFO 18310 --- [taskflow] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-13T00:16:39.187Z  INFO 18310 --- [taskflow] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:taskflow user=SA
+2026-11-13T00:16:39.192Z  INFO 18310 --- [taskflow] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-13T00:16:39.776Z  INFO 18310 --- [taskflow] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-11-13T00:16:43.246Z  INFO 18310 --- [taskflow] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-13T00:16:44.807Z  INFO 18310 --- [taskflow] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 18081 (http) with context path '/'
+2026-11-13T00:16:44.846Z  INFO 18310 --- [taskflow] [           main] com.abel.taskflow.TaskflowApplication    : Started TaskflowApplication in 13.93 seconds (process running for 15.535)
+
+--- POST /api/tasks : create a task ---
+Request body:
+{"title":"Design the database schema","description":"Tables for tasks and users","status":"TODO","priority":"HIGH","dueDate":"2026-11-20"}
+Response:
+{"id":1,"title":"Design the database schema","description":"Tables for tasks and users","status":"TODO","priority":"HIGH","dueDate":"2026-11-20","createdAt":"2026-11-13T00:16:46.58663132"}
+
+--- POST /api/tasks : second task, in progress ---
+{"id":2,"title":"Write the API documentation","description":"OpenAPI notes for the team","status":"IN_PROGRESS","priority":"MEDIUM","dueDate":"2026-11-25","createdAt":"2026-11-13T00:16:46.710311919"}
+
+--- PATCH /api/tasks/2/complete ---
+{"id":2,"title":"Write the API documentation","description":"OpenAPI notes for the team","status":"DONE","priority":"MEDIUM","dueDate":"2026-11-25","createdAt":"2026-11-13T00:16:46.710312"}
+
+--- GET /api/tasks ---
+[{"id":1,"title":"Design the database schema","description":"Tables for tasks and users","status":"TODO","priority":"HIGH","dueDate":"2026-11-20","createdAt":"2026-11-13T00:16:46.586631"},{"id":2,"title":"Write the API documentation","description":"OpenAPI notes for the team","status":"DONE","priority":"MEDIUM","dueDate":"2026-11-25","createdAt":"2026-11-13T00:16:46.710312"}]
+
+--- GET /api/tasks?status=DONE ---
+[{"id":2,"title":"Write the API documentation","description":"OpenAPI notes for the team","status":"DONE","priority":"MEDIUM","dueDate":"2026-11-25","createdAt":"2026-11-13T00:16:46.710312"}]
+
+--- GET /api/tasks/stats ---
+{"total":2,"todo":1,"inProgress":0,"done":1}
+
+--- GET / : the single-page frontend, HTTP status and title ---
+HTTP 200, 6149 bytes
+<title>TaskFlow - Team Task Manager</title>
